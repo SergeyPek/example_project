@@ -4,10 +4,11 @@ namespace App\Console\Commands;
 
 use App\Post;
 use App\User;
-use Goutte\Client;
+use Goutte\Client as GoutteClient;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpClient\HttpClient;
+use Guzzle\Http\Client as GuzzleClient;
 
 class ParsePosts extends Command
 {
@@ -42,32 +43,50 @@ class ParsePosts extends Command
      */
     public function handle()
     {
-        $client = new Client();
-        $crawler = $client->request('GET', 'https://www.reddit.com/');
-        $html = $crawler->filter('script#data')->text();
-        $json = Str::before(Str::after($html, 'window.___r = '), '; window.___prefetches');
+        $goutteClient = new GoutteClient();
+        $guzzleClient = new GuzzleClient();
+        $guzzleClient->setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 9_0_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13A404 Safari/601.1');
+
+        $crawler = $goutteClient->request('GET', 'https://www.reddit.com/');
+        $content = $crawler->filter('script#data')->text();
+        $json = Str::before(Str::after($content, 'window.___r = '), '; window.___prefetches');
         $data = json_decode($json, true);
 
         $postUrls = collect(array_map(function($post) {
             return $post['permalink'];
         }, array_values($data['posts']['models'])));
 
-        $postUrls->each(function ($postUrl, $key) {
-            $client = HttpClient::create();
-            $response = $client->request('GET', $postUrl . '.json', ['headers' => ['Accept: application/json', 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 9_0_1 like Mac OS X) AppleWebKit/601.1.46 (KHTML, like Gecko) Version/9.0 Mobile/13A404 Safari/601.1']]);
-            $postData = json_decode($response->getContent(), true)[0]['data']['children'][0]['data'];
-            $user = null;
-            if ($postData['id']) {
-                if ($postData['author_fullname'] && $postData['author']) {
-                    $user = User::firstOrCreate(
-                        ['external_id' => $postData['author_fullname']],
-                        ['username' => $postData['author'], '']
-                    );
+        $postUrls->chunk(10)->each(function($chunkedPostUrls) use ($guzzleClient) {
+            $requests = $chunkedPostUrls->map(function($url) use ($guzzleClient) {
+                return $guzzleClient->get($url . '.json');
+            })->toArray();
+            $responses = $guzzleClient->send($requests);
+            foreach ($responses as $response) {
+                try {
+                    $postData = $response->json()[0]['data']['children'][0]['data'];
+
+                    if ($postData['id']) {
+                        DB::transaction(function () use ($postData) {
+                            $user = null;
+
+                            if ($postData['author_fullname'] && $postData['author']) {
+                                $user = User::firstOrCreate(
+                                    ['external_id' => $postData['author_fullname']],
+                                    ['username' => $postData['author'], '']
+                                );
+                            }
+
+                            Post::firstOrCreate(
+                                ['external_id' => $postData['id']],
+                                ['headline' => $postData['title'], 'content' => $postData['selftext'], 'user_id' => $user ? $user->id : null]
+                            );
+                        });
+                    }
+
                 }
-                Post::firstOrCreate(
-                    ['external_id' => $postData['id']],
-                    ['headline' => $postData['title'], 'content' => $postData['selftext'], 'user_id' => $user ? $user->id : null]
-                );
+                catch (\Exception $exception) {
+
+                }
             }
         });
     }
