@@ -12,7 +12,7 @@ class User extends Model
      * @var array
      */
     protected $fillable = [
-        'username'
+        'username', 'external_id'
     ];
 
     /**
@@ -21,7 +21,7 @@ class User extends Model
      * @var array
      */
     protected $hidden = [
-        'created_at', 'updated_at'
+        'created_at', 'updated_at', 'external_id'
     ];
 
     /**
