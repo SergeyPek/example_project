@@ -1,0 +1,16 @@
+#root {
+  background: #fafafa;
+  height: 100vh;
+}
+
+.sidebar {
+  background: #fff;
+  text-align: center;
+  padding: 15px 0;
+}
+
+.ant-table-pagination.ant-pagination {
+  float: unset;
+  text-align: center;
+}
+

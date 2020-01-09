@@ -15,7 +15,7 @@ class PostsController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function index() {
-        return new PostCollection(Post::with('user')->simplePaginate());
+        return new PostCollection(Post::with('user')->paginate(10));
     }
 
 
@@ -26,6 +26,8 @@ class PostsController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function destroy($id) {
-        return Post::destroy($id);
+        return [
+            "status" => Post::destroy($id) > 0
+        ];
     }
 }
