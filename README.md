@@ -76,3 +76,26 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Server Requirements
+- PHP >= 7.1.3
+- MySQL
+- GIT
+- Composer
+- Laravel >= 5.8
+- NodeJS >= 12.14
+- NPM or Yarn
+
+## Setting Up and Running the Project
+- Clone project
+- Create database
+- Create .env file by removing from '.env.example'
+- Fill variables to your settings in .env file
+- Run 'composer install' command
+- Run 'php artisan key:generate' command
+- Run 'php artisan migrate' command
+- Run 'php artisan posts:parse' command for parsing posts from reddit
+- Run 'npm install' or 'yarn install' command
+- Run 'npm run dev' or 'yarn run dev' command for running frontend dev server
+- Run 'php artisan serve' command for running backend dev server
+- Now the application is available at http://localhost:8000
